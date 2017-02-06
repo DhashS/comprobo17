@@ -27,8 +27,7 @@ class Follower(robot.Neato):
        
        #do the aligned scans have an l2 cost of more than the robot's tolerance to motion
        trans_rot = self.ICP(scan_before_last, last_scan)
-       last_transformed = self.apply_tr(scan_before_last, trans_rot)
-       if self.motion_tol > self.pcl_l2_cost(last_transformed, last_scan):
+       if self.motion_tol > self.pcl_tformed_cost(pcl2, pcl1, trans_rot):
            if not self.last_movement_centroid:
                self.last_movement_centroid = self.last_pos
            self.pub.publish(self.movement(self.last_movement_centroid))
@@ -65,16 +64,31 @@ class Follower(robot.Neato):
         #let's transform pcl1 to pcl2
         greed = self.greedy_point_select(pcl1, pcl2)
         self.greed_points = greed
-        #err = self.mse_cost(greed_points)
         #zero translation for xyz, zero rotation is 
         i_trans, i_rot = ([0]*3), np.eye(3)
         #pack
         initial = np.vstack((i_rot, i_trans))
-        
-        res = minimize(lambda x: self.pcl_tformed_cost(pcl2, pcl1, x),
-                       initial,
-                       callback=lambda x: self.greed_points(self.apply_tr(pcl1, (x[:self.point_dim], x[self.point_dim]))))
-        return res.x
+        new_cloud = pcl1
+        #iterativley refine affine transform matricies
+        res_mats = []
+        while True:
+            res = minimize(lambda x: self.pcl_tformed_cost(pcl2, new_cloud, x),
+                           initial)
+            new_cloud = [Point(x,y,z) for x,y,z in self.apply_tr(pcl1, (res.x[:self.point_dim], res.x[self.point_dim]))]
+            if res.x == initial:
+                #reached full convergence
+                f_trans, f_rot = i_trans, i_rot
+                for tr in res_mats:
+                    rot = tr[:self.point_dim]
+                    trans = tr[self.point_dim]
+                    f_trans = f_trans + trans
+                    rot = np.dot(f_rot, rot)
+                return (f_trans, rot)
+            else:
+                #update the cloud and the greed dictiopnary
+                new_cloud = [Point32(x,y,z) for x,y,z in self.apply_tr(new_cloud, (res.x[:self.point_dim], res.x[self.point_dim]))]
+                self.greed_points = self.greedy_point_select(new_cloud, pcl2)
+                res_mats.append(res.x)
 
 
     def greedy_point_select(self, pcl1, pcl2):
@@ -99,9 +113,6 @@ class Follower(robot.Neato):
         
 
         
-
-
-
     @staticmethod
     def get_points(pts):
         return np.array([[getattr(pt, attr) for attr in 'xyz'] for pt in pts])
@@ -128,14 +139,5 @@ class Follower(robot.Neato):
         pts = [getattr(point, attr) for attr in 'xyz']
         return np.linalg.norm(pts)
     
-    def apply_tr_cost(trans_rot):
-       #and unpack
-       trans, rot = trans_rot[:self.point_dim], trans_rot
-       attrs = lambda p: [getattr(p, x) for x in 'xyz']
-       pts_mat = np.array([attrs(p) for p in pcl1.points]).T
-       truth = [greed_points[p] for p in pcl1.points]
-       return mean_squared_error(truth, affine_transform(pts_mat, rot, offset=trans))
-        
-
 my_neato = Follower(ip, rate)
 my_neato.run()
