@@ -1,0 +1,23 @@
+digraph wall {
+    rec_cloud [label="recieve a laser scan"]
+    conv [label="convert a scan to cartesian"]
+    ransac [label="RANSAC w/ linear model"]
+    line [label="solve line and perpendicular distance"]
+    intercept [label="follow the parallell line"]
+
+    line_fol [label="follow the parallell line"]
+    turn [label="point towards the line"]
+    fwd [label="go forward"]
+
+    rec_cloud -> conv
+    conv -> ransac
+    ransac -> fwd [label="if confidence < thresh"]
+    ransac -> line
+    fwd -> fwd [label="if no line"]
+    line -> intercept
+
+    line_fol -> turn
+    turn -> fwd
+    fwd -> turn [label="if perpendicular distance to parallell line > thresh"]
+
+}

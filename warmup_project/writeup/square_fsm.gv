@@ -1,0 +1,15 @@
+digraph square {
+    start [label="Start"]
+    rot [label="Turn"]
+    rec_pos [label="Save current Odometry"]
+    rec_pos2 [label="Save current Odometry"]
+    move [label="Go forward"]
+
+    start -> rec_pos
+    rec_pos -> move
+    move -> move [label="while L2(current odometry - saved odometry) < distance"]
+    move -> rec_pos2
+    rec_pos2 -> rot
+    rot -> rot [label="while theta(current odometry - saved odometry) < 90"]
+    rot -> rec_pos
+}
