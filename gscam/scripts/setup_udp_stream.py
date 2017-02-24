@@ -24,9 +24,5 @@ while not all_data.endswith('\n'):
 	data = s.recv(size)
 	all_data += data
 s.close()
-<<<<<<< HEAD
-
-=======
->>>>>>> 099e8f64b6643b97f52800b340e68ed50c611258
 system('hping3 -c 1 -2 -s ' + str(receive_port) + ' -p ' + all_data.strip() + ' ' + host)
 print 'Received:', all_data
