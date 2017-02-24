@@ -107,7 +107,7 @@ class Follower(robot.Neato):
         truth_pts = self.get_points([self.greed_points[p] for p in [Point32(x,y,z) for x,y,z in pts]])
         accum = 0
         for pt in abs(pts - truth_pts):
-            accum += sum(pt)**2
+            accum += sum(pt**2)
         return accum
 
         
